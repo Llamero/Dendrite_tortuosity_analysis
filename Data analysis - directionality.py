@@ -14,6 +14,8 @@ from tkinter import Tk
 from tkinter.filedialog import askopenfilename, asksaveasfilename #https://stackoverflow.com/questions/3579568/choosing-a-file-in-python-with-simple-dialog
 import os
 import re
+
+import scipy
 import xlrd #reminder to install updated library as it is needed for pandas Excel import
 import sys
 from pathlib import Path
@@ -79,8 +81,17 @@ def main():
         #Get tortuosity as aspect ratio
         df.local_weighted = [1/x for x in df.local_weighted]
         df.global_weighted = [1/x for x in df.global_weighted]
-#        df = df[df.score_genotype.str.contains("C57")]
+        genotype_labels = df.score_genotype.unique();  # Get list of all unique genotypes - https://chrisalbon.com/python/data_wrangling/pandas_list_unique_values_in_column/
+        genotype_df_list = []
 
+        df = df[df.score_genotype.str.contains("C57")]
+        print(df[df.score_location.str.contains("center")].local_weighted.median())
+        print(df[df.score_location.str.contains("peri")].local_weighted.median())
+        print(df[df.score_location.str.contains("center")].global_weighted.median())
+        print(df[df.score_location.str.contains("peri")].global_weighted.median())
+        print(scipy.stats.kstest(df[df.score_location.str.contains("center")].local_weighted, df[df.score_location.str.contains("peri")].local_weighted))
+        print(scipy.stats.kstest(df[df.score_location.str.contains("center")].global_weighted, df[df.score_location.str.contains("peri")].global_weighted))
+       
         #Sort data by genotype and location
         df = df.sort_values(["score_genotype", "score_location"], ascending=(True, True)) #Sort df by genotype and then location - https://www.kite.com/python/answers/how-to-sort-a-pandas-dataframe-by-multiple-columns-in-python
         genotype_labels = df.score_genotype.unique(); #Get list of all unique genotypes - https://chrisalbon.com/python/data_wrangling/pandas_list_unique_values_in_column/
@@ -92,19 +103,19 @@ def main():
         local_dir_fig, local_dir_axes = plt.subplots(1, 2, figsize=(16,8), sharey=True) #Plot graphs as subplots - https://dev.to/thalesbruno/subplotting-with-matplotlib-and-seaborn-5ei8
         fixed_ylim = (0, 1)
         plt.setp(local_dir_axes, ylim=fixed_ylim) #Keep the y-axis for all subplots fixed to the max score range - https://stackoverflow.com/questions/31006971/setting-the-same-axis-limits-for-all-subplots-in-matplotlib
-        local_dir_fig.suptitle(main_title + "\nLocal Directionlity Analysis")
-        local_dir_loc_bplot = sns.boxplot(ax=local_dir_axes[0], y="local_weighted", x="score_location", data=df, notch=True, color="white")
+        local_dir_fig.suptitle(main_title + "\nLocal Directionality Analysis")
+        local_dir_loc_bplot = sns.boxplot(ax=local_dir_axes[0], y="local_weighted", x="score_location", data=df, notch=False, color="white")
         plt.setp(local_dir_loc_bplot.artists, edgecolor = 'k', facecolor='w') #Draw boxplot lines as black - https://stackoverflow.com/questions/43434020/black-and-white-boxplots-in-seaborn
         plt.setp(local_dir_loc_bplot.lines, color='k') #Draw boxplot lines as black - https://stackoverflow.com/questions/43434020/black-and-white-boxplots-in-seaborn
         local_dir_loc_bplot.set_title("Location") #Add title - https://stackoverflow.com/questions/42406233/how-to-add-title-to-seaborn-boxplot
-        local_dir_loc_bplot = sns.swarmplot(ax=local_dir_axes[0], y="local_weighted", x="score_location", data=df, color="black", s=3)
+        local_dir_loc_bplot = sns.swarmplot(ax=local_dir_axes[0], y="local_weighted", x="score_location", data=df, hue="score_genotype", s=3)
 
         #Global directionality plots
-        global_dir_loc_bplot = sns.boxplot(ax=local_dir_axes[1], y="global_weighted", x="score_location", data=df, notch=True, color="white")
+        global_dir_loc_bplot = sns.boxplot(ax=local_dir_axes[1], y="global_weighted", x="score_location", data=df, notch=False, color="white")
         plt.setp(global_dir_loc_bplot.artists, edgecolor = 'k', facecolor='w') #Draw boxplot lines as black - https://stackoverflow.com/questions/43434020/black-and-white-boxplots-in-seaborn
         plt.setp(global_dir_loc_bplot.lines, color='k') #Draw boxplot lines as black - https://stackoverflow.com/questions/43434020/black-and-white-boxplots-in-seaborn
         global_dir_loc_bplot.set_title("Location") #Add title - https://stackoverflow.com/questions/42406233/how-to-add-title-to-seaborn-boxplot
-        global_dir_loc_bplot = sns.swarmplot(ax=local_dir_axes[1], y="global_weighted", x="score_location", data=df, color="black", s=3)
+        global_dir_loc_bplot = sns.swarmplot(ax=local_dir_axes[1], y="global_weighted", x="score_location", data=df, hue="score_genotype", s=3)
 
         plt.show()
 
@@ -250,7 +261,7 @@ def main():
     score_file_name = re.sub(r"\.[A-Za-z0-9_]+$", "", score_file_name) #remove extension - https://stackoverflow.com/questions/11475885/python-replace-regex/11475905
     combined_df = concatenateDataframes(local_df, global_df, score_df) #Combine dataframes
 
-    plt.ion()
+#    plt.ion()
     plt.show()
 #    createScatterBoxPlot(combined_df, score_file_name)
     createPublicationPlot(combined_df, score_file_name)
@@ -260,8 +271,8 @@ def main():
 #    concat_df.to_csv(output_path, index=False, header=True) #https://datatofish.com/export-dataframe-to-csv/
 
 ##    #Save plot image
-    output_path = asksaveasfilename(title="Save plots", filetypes=[("PNG image", "*.png")], defaultextension=".png", initialfile=score_file_name + " - plots") #http://effbot.org/tkinterbook/tkinter-file-dialogs.htm
-    plt.savefig(output_path) #https://datatofish.com/export-dataframe-to-csv/
+#    output_path = asksaveasfilename(title="Save plots", filetypes=[("PNG image", "*.png")], defaultextension=".png", initialfile=score_file_name + " - plots") #http://effbot.org/tkinterbook/tkinter-file-dialogs.htm
+#    plt.savefig(output_path) #https://datatofish.com/export-dataframe-to-csv/
 ###    input("Press [enter] to continue.")
 
 if __name__ == '__main__':
